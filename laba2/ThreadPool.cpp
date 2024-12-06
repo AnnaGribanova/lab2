@@ -25,7 +25,7 @@ ThreadPool::ThreadPool() : stop(false)
                         return this->stop || !this->tasks.empty();
                     });
 
-                    if (this->stop && this->tasks.empty()) 
+                    if (this->stop) 
                     {
                         return;
                     }
@@ -55,8 +55,13 @@ ThreadPool::~ThreadPool()
 void ThreadPool::enqueue(const function<void()>& job) 
 {
     {
-        unique_lock<mutex> lock(queueMutex);
+        lock_guard<mutex> lock(queueMutex);
         tasks.emplace(job);
     }
     condition.notify_one();
+}
+
+bool ThreadPool::empty() 
+{
+    return tasks.empty();
 }

@@ -14,4 +14,6 @@ int main()
 	{
 		pool.enqueue(bind(myFunction));
 	}
+
+	while (!pool.empty());
 }

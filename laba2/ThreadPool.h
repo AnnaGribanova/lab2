@@ -15,6 +15,7 @@ public:
     ~ThreadPool();
 
     void enqueue(const function<void()>& job);
+    bool empty();
 
 private:
     vector<thread> workers;
