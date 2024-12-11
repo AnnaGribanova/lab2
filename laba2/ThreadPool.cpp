@@ -12,7 +12,10 @@ using namespace std;
 
 ThreadPool::ThreadPool() : stop(false) 
 {
-    for (unsigned int i = 0; i < thread::hardware_concurrency(); ++i) 
+    unsigned int tCount = thread::hardware_concurrency();
+    if (tCount == 0)
+        tCount = 1;
+    for (unsigned int i = 0; i < tCount; ++i) 
     {
         workers.emplace_back([this] {
             for (;;) {
@@ -38,6 +41,7 @@ ThreadPool::ThreadPool() : stop(false)
             }
         });
     }
+    cout << "ThreadPool started, thread count: " << tCount << endl;
 }
 
 ThreadPool::~ThreadPool() 
@@ -45,11 +49,13 @@ ThreadPool::~ThreadPool()
     stop = true;
     condition.notify_all();
 
+    cout << "ThreadPool destroying..." << endl;
     for (thread& worker : workers) 
     {
         if (worker.joinable())
             worker.join();
     }
+    cout << "ThreadPool destroyed" << endl;
 }
 
 void ThreadPool::enqueue(const function<void()>& job) 
