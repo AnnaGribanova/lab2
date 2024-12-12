@@ -14,9 +14,9 @@ void saveToFile(int value) {
 	*outputFile << value << endl;
 }
 
-void randomArraySum() 
+void randomArraySum(int randomGen) 
 {
-	srand(time(0));
+	srand(randomGen);
 	int* arr = new int[ArraySize];
 	for (int i = 0; i < ArraySize; ++i) {
 		arr[i] = rand() % 10;
@@ -25,11 +25,13 @@ void randomArraySum()
 	for (int i = 0; i < ArraySize; ++i) {
 		sum += arr[i];
 	}
+	delete[] arr;
 	saveToFile(sum);
 }
 
 int main()
 {
+	srand((unsigned int) time(0));
 	outputFile = new ofstream("output.txt");
 
 	{
@@ -39,7 +41,7 @@ int main()
 		
 		for (int i = 0; i < 20; ++i)
 		{
-			pool.enqueue(bind(randomArraySum));
+			pool.enqueue(bind(randomArraySum, rand()));
 		}
 
 		while (!pool.empty());
