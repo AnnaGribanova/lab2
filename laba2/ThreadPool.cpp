@@ -79,4 +79,29 @@ bool ThreadPool::empty()
     void* ThreadPool::run(void* param)
 #endif
     {
+        for (;;) {
+            function<void()> task;
+
+            {
+                unique_lock<mutex> lock(this->queueMutex);
+                this->condition.wait(lock, [this]
+                    {
+                        return this->stop || !this->tasks.empty();
+                    });
+
+                if (this->stop)
+                {
+#if defined(_WIN32) || defined(_WIN64)
+                    return 0;
+#else
+                    return nullptr;
+#endif
+                }
+
+                task = move(this->tasks.front());
+                this->tasks.pop();
+            }
+
+            task();
+        }
     }
