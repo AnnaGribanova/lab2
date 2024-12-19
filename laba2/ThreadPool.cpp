@@ -17,29 +17,20 @@ ThreadPool::ThreadPool() : stop(false)
         tCount = 1;
     for (unsigned int i = 0; i < tCount; ++i) 
     {
-        workers.emplace_back([this] {
-            for (;;) {
-                function<void()> task;
-
-                {
-                    unique_lock<mutex> lock(this->queueMutex);
-                    this->condition.wait(lock, [this] 
-                        {
-                        return this->stop || !this->tasks.empty();
-                    });
-
-                    if (this->stop) 
-                    {
-                        return;
-                    }
-
-                    task = move(this->tasks.front());
-                    this->tasks.pop();
-                }
-
-                task(); 
-            }
-        });
+#if defined(_WIN32)  || defined(_WIN64)
+        HANDLE thread = (HANDLE)_beginthreadex(NULL, 0, [](void* param) -> unsigned {
+            return static_cast<ThreadPool*>(param)->run(param);
+            }, this, 0, NULL);
+        workers.emplace_back(thread);
+#elif defined __linux__
+        pthread_t thread;
+        int result = pthread_create(&thread, nullptr, [](void* param) -> void* {
+            return static_cast<ThreadPool*>(param)->run(param);
+            }, this);
+        if (result == 0) {
+            workers.emplace_back(thread);
+        }
+#endif
     }
     cout << "ThreadPool started, thread count: " << tCount << endl;
 }
@@ -50,10 +41,20 @@ ThreadPool::~ThreadPool()
     condition.notify_all();
 
     cout << "ThreadPool destroying..." << endl;
-    for (thread& worker : workers) 
+
+#if defined (_WIN32) || defined (_WIN64)
+    WaitForMultipleObjects(workers.size(), workers.data(), TRUE, INFINITE);
+#endif
+
+    for (unsigned int i = 0; i < workers.size(); ++i)
     {
-        if (worker.joinable())
-            worker.join();
+#if defined(_WIN32)  || defined(_WIN64)
+        CloseHandle(workers[i]);
+
+#else
+        pthread_join(workers[i], nullptr);
+
+#endif
     }
     cout << "ThreadPool destroyed" << endl;
 }
@@ -71,3 +72,11 @@ bool ThreadPool::empty()
 {
     return tasks.empty();
 }
+
+#if defined (_WIN32) || defined (_WIN64)
+    unsigned __stdcall ThreadPool::run(void* param)
+#elif defined __linux__
+    void* ThreadPool::run(void* param)
+#endif
+    {
+    }
